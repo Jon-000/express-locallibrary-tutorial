@@ -11,7 +11,11 @@ router.get('/', function(req, res, next) {
     .populate('author')
     .exec((err, result) => {
       if (err) next (err)
-      res.status(200).json({msg:"find all authors successfully", Author_list: result});
+      res.status(200)
+        .json({
+          msg:"find all authors successfully",
+          author_list: result
+        });
     })
 });
 

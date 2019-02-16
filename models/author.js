@@ -14,6 +14,9 @@ const AuthorSchema = new Schema({
   date_of_death: {type: Date}
 })
 
+AuthorSchema.set('toJSON', { virtuals: true })
+
+  
 AuthorSchema
   .virtual('name')
   .get(function() {
