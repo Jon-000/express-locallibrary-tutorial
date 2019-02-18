@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const multer  = require('multer')
+const upload = multer()
 const async = require('async');
+const { body, validationResult } = require('express-validator/check');
+const { sanitizeBody } = require('express-validator/filter');
 
 const Book = require('../../models/book');
 const Bookinstance = require('../../models/bookinstance');
@@ -51,8 +55,63 @@ router.delete('/:id', (req, res, next) => {
   )
 })
 
-router.post('/', function(req, res, next) {
-  
-})
+router.post('/',
+// parse multpart/form-data
+upload.none(),
+
+// convert the genre to an array
+(req, res, next) => {
+  req.body.genre = JSON.parse(req.body.genre)
+  next()
+},
+(req, res, next ) => {
+  console.log(req.body)
+  // console.log(typeof req.body.genre[0])
+  // console.log(typeof JSON.parse(req.body.genre)[0])
+  // console.log(typeof req.body.genre[0] === typeof JSON.parse(req.body.genre)[0])
+  next();
+},
+// validate fields
+body('title', 'Title must not be empty.').isLength({min:1}).trim(),
+
+// sanitize fields (using wildcard)
+sanitizeBody('*').trim().escape(),
+
+// Process request after validation and sanitization
+(req, res, next) => {
+  // Extract the validation errors from a request.
+  const errors = validationResult(req);
+
+  // Create a Book Object with escaped and trimmed data.
+  console.log('after validation and sanitization')
+  console.log({ title: req.body.title,
+    author: req.body.author,
+    summary: req.body.summary,
+    isbn: req.body.isbn,
+    genre: req.body.genre
+   })
+  const book = new Book({
+    title: req.body.title,
+    author: req.body.author,
+    summary: req.body.summary,
+    isbn: req.body.isbn,
+    genre: req.body.genre
+  })
+
+  if (!errors.isEmpty()) {
+    // 如果验证有错误
+    console.log(errors.array())
+    return res.json({msg:'validation failed', errors: errors.array()})
+  } else {
+    // 验证没错
+    book.save(function(err) {
+      // 如果保存出错
+      if (err) return res.json({msg: 'save failed', err})
+      // 如果保存没出错
+      res.json({msg: 'book saved', book})
+    })
+  }
+}
+)
 
 module.exports = router;

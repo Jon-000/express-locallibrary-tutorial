@@ -165,6 +165,7 @@ exports.book_create_get = function(req, res, next) {
 exports.book_create_post = [
   // Convert the genre to an array.
   (req, res, next) => {
+      console.log(req.body)
       if(!(req.body.genre instanceof Array)){
           if(typeof req.body.genre==='undefined')
           req.body.genre=[];
@@ -190,6 +191,13 @@ exports.book_create_post = [
       const errors = validationResult(req);
 
       // Create a Book object with escaped and trimmed data.
+      console.log('after validation and sanitization')
+      console.log({ title: req.body.title,
+        author: req.body.author,
+        summary: req.body.summary,
+        isbn: req.body.isbn,
+        genre: req.body.genre
+       })
       var book = new Book(
         { title: req.body.title,
           author: req.body.author,
