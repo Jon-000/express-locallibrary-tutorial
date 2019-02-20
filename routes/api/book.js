@@ -20,6 +20,7 @@ router.get('/', function(req, res, next) {
     })
 });
 
+// get one book detail
 router.get('/:id', function(req, res, next) {
   async.parallel(
     {
@@ -46,6 +47,7 @@ router.get('/:id', function(req, res, next) {
   )
 })
 
+// delete one book
 router.delete('/:id', (req, res, next) => {
   // res.send(req.params.id)
   async.parallel(
@@ -81,41 +83,51 @@ router.delete('/:id', (req, res, next) => {
   )
 })
 
+
+// post 和 update 表单的前处理逻辑是一样的，所以提出来
+// 前处理包括，解析表单数据，去序列化前端表单序列化的nested json,验证表单数据，escape等安全性处理
+const pre_process_form = [
+  // 解析表单数据 parse multpart/form-data
+  upload.none(),
+  
+  // convert the genre to an array
+  (req, res, next) => {
+    req.body.genre = JSON.parse(req.body.genre)
+    next()
+  },
+  (req, res, next ) => {
+    console.log(req.body)
+    // console.log(typeof req.body.genre[0])
+    // console.log(typeof JSON.parse(req.body.genre)[0])
+    // console.log(typeof req.body.genre[0] === typeof JSON.parse(req.body.genre)[0])
+    next();
+  },
+  // validate fields
+  body('title', 'Title must not be empty.').isLength({min:1}).trim(),
+  
+  // sanitize fields (using wildcard)
+  sanitizeBody('*').trim().escape(),
+  ]
+
+
+// create new book
 router.post('/',
-// parse multpart/form-data
-upload.none(),
-
-// convert the genre to an array
-(req, res, next) => {
-  req.body.genre = JSON.parse(req.body.genre)
-  next()
-},
-(req, res, next ) => {
-  console.log(req.body)
-  // console.log(typeof req.body.genre[0])
-  // console.log(typeof JSON.parse(req.body.genre)[0])
-  // console.log(typeof req.body.genre[0] === typeof JSON.parse(req.body.genre)[0])
-  next();
-},
-// validate fields
-body('title', 'Title must not be empty.').isLength({min:1}).trim(),
-
-// sanitize fields (using wildcard)
-sanitizeBody('*').trim().escape(),
+pre_process_form,
 
 // Process request after validation and sanitization
 (req, res, next) => {
   // Extract the validation errors from a request.
   const errors = validationResult(req);
 
+  // console.log('after validation and sanitization')
+  // console.log({ title: req.body.title,
+  //   author: req.body.author,
+  //   summary: req.body.summary,
+  //   isbn: req.body.isbn,
+  //   genre: req.body.genre
+  //  })
+
   // Create a Book Object with escaped and trimmed data.
-  console.log('after validation and sanitization')
-  console.log({ title: req.body.title,
-    author: req.body.author,
-    summary: req.body.summary,
-    isbn: req.body.isbn,
-    genre: req.body.genre
-   })
   const book = new Book({
     title: req.body.title,
     author: req.body.author,
@@ -140,4 +152,41 @@ sanitizeBody('*').trim().escape(),
 }
 )
 
+// update book
+router.put('/:id', 
+pre_process_form,
+
+(req, res, next) => {
+  // Extract the validation errors from a request.
+  const errors = validationResult(req);
+
+  const bookUpdateOption = {
+    title: req.body.title,
+    author: req.body.author,
+    summary: req.body.summary,
+    isbn: req.body.isbn,
+    genre: req.body.genre
+  }
+
+  if (!errors.isEmpty()) {
+    // 如果验证有错误
+    console.log(errors.array())
+    return res.status(400).json({msg:'validation failed', errors: errors.array()})
+  } else {
+    // 验证没错
+    Book.findByIdAndUpdate(req.params.id, bookUpdateOption, function(err, updatedBook) {
+      // 如果保存出错
+      if (err) {
+        console.error({msg: 'save failed', err})
+        return res.status(500)
+      }
+      // 如果保存没出错
+      return res.status(200).json({msg: 'book updated', book: updatedBook})
+    })
+  }
+}
+
+)
+
 module.exports = router;
+
