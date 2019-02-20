@@ -9,7 +9,7 @@ const { sanitizeBody } = require('express-validator/filter');
 const Book = require('../../models/book');
 const Bookinstance = require('../../models/bookinstance');
 
-/* GET home page. */
+/* GET all books */
 router.get('/', function(req, res, next) {
   Book
     .find()
@@ -19,6 +19,32 @@ router.get('/', function(req, res, next) {
       res.status(200).json({msg:"find all books successfully", book_list: result});
     })
 });
+
+router.get('/:id', function(req, res, next) {
+  async.parallel(
+    {
+      book: function(cb) {
+        Book.findById(req.params.id)
+          .populate('author')
+          .populate('genre')
+          .exec(cb)
+      },
+      book_instance_list: function(cb) {
+        Bookinstance.find({book: req.params.id}).exec(cb)
+      }
+    },
+    function(err, results) {
+      if (err) {
+        console.log(err)
+        return res.status(500).json({msg: 'err'})
+      }
+      if (results.book === null) {
+        return res.status(404).json({msg: 'book not found'})
+      }
+      return res.json({msg: 'find book and its instance successfully', results })
+    }
+  )
+})
 
 router.delete('/:id', (req, res, next) => {
   // res.send(req.params.id)

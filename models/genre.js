@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 
 const GenreSchema = new Schema({
   name: {type: String, required: true, min: 3, max: 100},
-  book: [{type: Schema.Types.ObjectId, ref: 'Book', required: true}]
+  // book: [{type: Schema.Types.ObjectId, ref: 'Book', required: true}]
 })
 
 GenreSchema
