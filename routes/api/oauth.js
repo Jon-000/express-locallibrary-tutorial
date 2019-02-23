@@ -1,12 +1,23 @@
 
+const fs = require('fs')
+const path = require('path')
 const router = require('express').Router()
 const https = require('https')
 const querystring = require('querystring')
 const axios = require('axios')
 
+const jwt = require('jsonwebtoken')
+const privateKey = fs.readFileSync(path.join(__dirname, '../../jwtRS256.key'))
+
+
+const User = require('../../models/user');
+
 const url_for_get_access_token = 'https://github.com/login/oauth/access_token'
 // const url = new URL(url_for_get_access_token)
 
+// 该路由需为github oauth app设定的redirec_url的子路由,或者说下级路由
+// 此时github设置为`http://localhost:8080/api/oauth/github`
+// 参考https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#redirect-urls
 router.get('/github/callback', (req, res, next) => {
   let c = req.query.code
 
@@ -48,14 +59,102 @@ try {
       headers: {"Authorization": `token ${access_token}`}
     }).then(resUser => {
       // 获取用户成功
-
+      const githubUserInfo = {
+        github_login: resUser.data.login,
+        github_id: resUser.data.id,
+        github_node_id: resUser.data.node_id,
+        github_avatar_url: resUser.data.avatar_url,
+        github_email: resUser.data.email,
+        github_name: resUser.data.name,
+      }
       // 更新数据库中的用户信息
+      User
+        .findOne({
+          github_login: githubUserInfo.github_login,
+          github_id: githubUserInfo.github_id,
+          github_email: githubUserInfo.github_email
+        })
+        .exec((err, userDoc) => {
+          console.log(userDoc)
+          if (err) return res.json({msg: 'find user failed'})
+          // 检查用户是否存在,没查到返回null
+          if (userDoc) {
+            // 如果已有用户.返回jwt
+            // 先异步创建一个jwt
+            jwt.sign(
+              // payload
+              {
+                iss: "http://yisi.fun",
+                aud: "http://yisi.fun/api",
+                sub: githubUserInfo.github_login,
+                exp: Math.floor( ( Date.now() + 7*24*60*60*1000 ) / 1000 ), // jwt对exp字段的要求为单位seconds的数字,js中为milliseconds
+                scope: "read write",
+                foo: "bar",
+              },
+              privateKey,
+              // options
+              { 
+                header: {
+                  alg: 'RS256',
+                  typ: 'JWT'
+                }
+              },
+              function(err, jwtToken) {
+                // 生成jwt失败
+                if (err) return res.json({msg: 'generate jwt failed'})
+                // 生成jwt成功
+                // 将jwt存入cookie然后重定向至'/login'
+                res.cookie('jwt_token', jwtToken)
+                res.redirect(302, '/login')
+              }
+            )
+
+          } else {
+            // 没有用户
+            // 新建用户,成功后返回jwt
+            User
+              .create(githubUserInfo)
+              .then((createdUser) => {
+                // generate jwt
+                jwt.sign(
+                  // payload
+                  {
+                    iss: "http://yisi.fun",
+                    aud: "http://yisi.fun/api",
+                    sub: createdUser.github_login,
+                    exp: Math.floor( ( Date.now() + 7*24*60*60*1000 ) / 1000 ), // jwt对exp字段的要求为单位seconds的数字,js中为milliseconds
+                    scope: "read write",
+                    foo: "bar",
+                  },
+                  privateKey,
+                  // options
+                  { 
+                    header: {
+                      alg: 'RS256',
+                      typ: 'JWT'
+                    }
+                  },
+                  function(err, token) {
+                    // 生成jwt失败
+                    if (err) return res.json({msg: 'generate jwt failed'})
+                    // 生成jwt成功
+                    return res.redirect('/')
+                  }
+                )
+              })
+              .catch((createUserErr) => {
+                console.log(createUserErr)
+                res.json({msg: 'create user failed'})
+              })
+          }
+        })
       
-      return res.json({
-        msg: 'get access_token and user profile successfully',
-        oauthResult: resA.data,
-        githubUserProfile: resUser.data
-      })
+      
+      // return res.json({
+      //   msg: 'get access_token and user profile successfully',
+      //   oauthResult: resA.data,
+      //   githubUserProfile: resUser.data
+      // })
     }).catch((err) => {
       // 先判断错误类型.因为上游程序的错误和500的http错误都会到这里!但是应该区别对待
       if (err.response) {
@@ -84,7 +183,8 @@ try {
 } catch (error) {
   console.log(error)
 }
-  // exchange `code` for an `access token`  
+
+
 
 
 })

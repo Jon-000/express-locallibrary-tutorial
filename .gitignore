@@ -63,3 +63,7 @@ typings/
 
 # next.js build output
 .next
+
+#jwt rs256 key
+jwtRS256.key
+jwtRS256.key.pub
