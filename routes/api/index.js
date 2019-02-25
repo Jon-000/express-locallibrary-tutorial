@@ -6,6 +6,7 @@ const bookApi = require('./book');
 const authorApi = require('./author');
 const genreApi = require('./genre');
 const oauthRouter = require('./oauth');
+const userApi = require('./user');
 
 router.use(cors())
 
@@ -18,5 +19,7 @@ router.use('/author', authorApi);
 router.use('/genre', genreApi);
 
 router.use('/oauth', oauthRouter)
+
+router.use('/user', userApi)
 
 module.exports = router;

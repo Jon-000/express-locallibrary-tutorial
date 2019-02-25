@@ -15,6 +15,7 @@ const User = require('../../models/user');
 const url_for_get_access_token = 'https://github.com/login/oauth/access_token'
 // const url = new URL(url_for_get_access_token)
 
+// 该路由是为了响应oauth的redirect路径
 // 该路由需为github oauth app设定的redirec_url的子路由,或者说下级路由
 // 此时github设置为`http://localhost:8080/api/oauth/github`
 // 参考https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#redirect-urls
@@ -104,8 +105,9 @@ try {
                 if (err) return res.json({msg: 'generate jwt failed'})
                 // 生成jwt成功
                 // 将jwt存入cookie然后重定向至'/login'
+                console.log(req.cookies)
                 res.cookie('jwt_token', jwtToken)
-                res.redirect(302, '/login')
+                res.redirect(302, req.cookies.url_before_oauth)
               }
             )
 
