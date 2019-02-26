@@ -105,8 +105,10 @@ try {
                 if (err) return res.json({msg: 'generate jwt failed'})
                 // 生成jwt成功
                 // 将jwt存入cookie然后重定向至'/login'
+                console.log('req.cookies:')
                 console.log(req.cookies)
                 res.cookie('jwt_token', jwtToken)
+                console.log(req.cookies.url_before_oauth)
                 res.redirect(302, req.cookies.url_before_oauth)
               }
             )

@@ -9,6 +9,8 @@ const { sanitizeBody } = require('express-validator/filter');
 const Book = require('../../models/book');
 const Bookinstance = require('../../models/bookinstance');
 
+const verifyJWT = require('../jwtAuthMiddle')
+
 /* GET all books */
 router.get('/', function(req, res, next) {
   Book
@@ -87,15 +89,19 @@ router.delete('/:id', (req, res, next) => {
 // post 和 update 表单的前处理逻辑是一样的，所以提出来
 // 前处理包括，解析表单数据，去序列化前端表单序列化的nested json,验证表单数据，escape等安全性处理
 const pre_process_form = [
+
   // 解析表单数据 parse multpart/form-data
   upload.none(),
   
   // convert the genre to an array
   (req, res, next) => {
+    console.log(req.body)
+    // req.body.title = JSON.parse(req.body.title)
     req.body.genre = JSON.parse(req.body.genre)
     next()
   },
   (req, res, next ) => {
+    console.log('req.body: ')
     console.log(req.body)
     // console.log(typeof req.body.genre[0])
     // console.log(typeof JSON.parse(req.body.genre)[0])
@@ -112,6 +118,9 @@ const pre_process_form = [
 
 // create new book
 router.post('/',
+// 检查jwt
+verifyJWT,
+
 pre_process_form,
 
 // Process request after validation and sanitization
@@ -128,23 +137,25 @@ pre_process_form,
   //  })
 
   // Create a Book Object with escaped and trimmed data.
-  const book = new Book({
+  const book = {
     title: req.body.title,
     author: req.body.author,
     summary: req.body.summary,
     isbn: req.body.isbn,
     genre: req.body.genre
-  })
+  }
 
   if (!errors.isEmpty()) {
     // 如果验证有错误
-    console.log(errors.array())
     return res.json({msg:'validation failed', errors: errors.array()})
   } else {
     // 验证没错
-    book.save(function(err) {
+    Book.create(book, function(err, bookDoc) {
       // 如果保存出错
-      if (err) return res.json({msg: 'save failed', err})
+      if (err) {
+        console.log(err);
+        return res.json({msg: 'save failed', err})
+      }
       // 如果保存没出错
       res.json({msg: 'book saved', book})
     })
@@ -170,6 +181,7 @@ pre_process_form,
 
   if (!errors.isEmpty()) {
     // 如果验证有错误
+    console.log('errors:')
     console.log(errors.array())
     return res.status(400).json({msg:'validation failed', errors: errors.array()})
   } else {
@@ -177,8 +189,8 @@ pre_process_form,
     Book.findByIdAndUpdate(req.params.id, bookUpdateOption, function(err, updatedBook) {
       // 如果保存出错
       if (err) {
-        console.error({msg: 'save failed', err})
-        return res.status(500)
+        console.log({msg: 'save failed', err})
+        return res.status(500).send('a')
       }
       // 如果保存没出错
       return res.status(200).json({msg: 'book updated', book: updatedBook})
