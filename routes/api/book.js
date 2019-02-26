@@ -50,7 +50,7 @@ router.get('/:id', function(req, res, next) {
 })
 
 // delete one book
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', verifyJWT, (req, res, next) => {
   // res.send(req.params.id)
   async.parallel(
     {
@@ -157,7 +157,7 @@ pre_process_form,
         return res.json({msg: 'save failed', err})
       }
       // 如果保存没出错
-      res.json({msg: 'book saved', book})
+      res.json({msg: 'book saved', book:bookDoc})
     })
   }
 }
@@ -165,6 +165,7 @@ pre_process_form,
 
 // update book
 router.put('/:id', 
+verifyJWT,
 pre_process_form,
 
 (req, res, next) => {
